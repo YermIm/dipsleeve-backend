@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ko-KR"
+
+reviews:
+  profile: "chill"
+  high_level_summary: true
+  poem: false
+  request_changes_workflow: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "develop"
+      - "main"
+
+  path_filters:
+    - "src/**"
+    - "build.gradle"
+    - "!build/**"
+    - "!.gradle/**"
+    - "!gradle/**"
+
+  path_instructions:
+    - path: "src/main/java/**"
+      instructions: >
+        다음 컨벤션과 핵심 영역을 기준으로 리뷰한다.
+        1. 컨벤션: @Setter, @Data 사용 지양. Entity는 Setter 대신 의미 있는 비즈니스 메서드로 상태를 변경한다.
+        2. 의존성 주입: 생성자 주입만 사용(@RequiredArgsConstructor + final). 필드 주입(@Autowired) 지양.
+        3. 계층 분리: Controller는 요청/응답 처리만, 비즈니스 로직은 Service에 둔다. Entity를 API 응답으로 직접 반환하지 않고 DTO를 사용한다.
+        4. 메서드 네이밍: Controller/Service는 getUser류, Repository는 findByUser류.
+        5. 예외 처리: 도메인별 에러코드 Enum(예: USER_400_1)을 사용하고, HTTP Status는 400/401/403/404/409만 사용한다.
+        6. JPA: N+1 문제, 지연 로딩, 트랜잭션 범위(@Transactional)를 확인한다.
+        7. 보안: 비밀번호 해시 처리, JWT 검증, 권한 검사 누락 여부를 확인한다. 민감 정보 하드코딩 금지.
+        8. 스타일: 들여쓰기 4칸, 한 줄 최대 120자.
+    - path: "src/test/java/**"
+      instructions: >
+        테스트가 성공/실패 케이스를 모두 다루는지, 테스트 이름이 무엇을 검증하는지 드러나는지 확인한다.
+
+chat:
+  auto_reply: true
+
+tone_instructions: >
+  한국어로, 백엔드를 처음 배우는 개발자에게 설명하듯 리뷰한다.
+  버그, 보안, 데이터 정합성 문제를 스타일 지적보다 우선한다.
+  문제, 이유, 개선 코드 순으로 제시하고 잘한 점도 짚어 준다.
+  차분하고 이해하기 쉬운 톤을 유지한다.
