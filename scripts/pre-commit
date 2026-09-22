@@ -1,0 +1,16 @@
+#!/bin/sh
+echo "[git hook] Spotless 포맷팅 적용 중..."
+./gradlew spotlessApply
+
+if [ $? -ne 0 ]; then
+  echo "Spotless 실행 실패, 커밋이 중단됩니다."
+  exit 1
+fi
+
+git diff --staged --name-only | while read file; do
+  if [ -f "$file" ]; then
+    git add "$file"
+  fi
+done
+
+exit
