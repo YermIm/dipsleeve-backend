@@ -1,7 +1,8 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.1.1'
-	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.springframework.boot' version '4.1.1'          // 스프링 부트 자체 (내장 서버, 자동 설정 등)
+	id 'io.spring.dependency-management' version '1.1.7'   // 라이브러리 버전을 스프링 부트가 관리해주는 플러그인
+	id 'com.diffplug.spotless' version '8.10.2'             // 코드 포맷 자동 정렬 도구
 }
 
 group = 'com.dipsleeve'
@@ -18,13 +19,22 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-security'
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	// API 요청을 받고, 입력값을 검증하는 데 필요
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// 로그인/인가 처리에 필요
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// DB(MySQL)와 데이터를 주고받는 데 필요
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+
+	// 반복되는 getter/생성자 코드를 어노테이션으로 대신 생성해줌
+	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// 테스트 코드 실행에 필요
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
@@ -36,4 +46,28 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// 코드 스타일 자동 정렬 설정
+// 검사만: ./gradlew spotlessCheck  /  자동 정렬: ./gradlew spotlessApply
+spotless {
+	java {
+		palantirJavaFormat()        // 정렬 규칙: 들여쓰기 4칸, 한 줄 120자
+		removeUnusedImports()       // 안 쓰는 import 자동 삭제
+		trimTrailingWhitespace()    // 줄 끝 공백 삭제
+		endWithNewline()            // 파일 마지막에 빈 줄 하나 남기기
+	}
+}
+
+// scripts/pre-commit을 .git/hooks/pre-commit으로 복사해 자동 설치
+tasks.register('installGitHooks', Copy) {
+	from "$rootDir/scripts/pre-commit"
+	into "$rootDir/.git/hooks"
+	filePermissions {
+		unix("rwxr-xr-x")
+	}
+}
+
+tasks.named('build') {
+	dependsOn tasks.named('installGitHooks')
 }
