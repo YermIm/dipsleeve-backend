@@ -17,6 +17,11 @@ reviews:
   path_filters:
     - "src/**"
     - "build.gradle"
+    - "settings.gradle"
+    - ".gitignore"
+    - ".coderabbit.yaml"
+    - "scripts/**"
+    - ".github/**"
     - "!build/**"
     - "!.gradle/**"
     - "!gradle/**"
