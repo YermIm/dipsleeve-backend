@@ -18,6 +18,9 @@ public enum CommonErrorCode implements BaseErrorCode {
     // @Valid 입력값 검증에 실패한 경우
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "COMMON_400_2", "입력값이 올바르지 않습니다."),
 
+    // 404: 존재하지 않는 주소
+    NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_404_1", "요청한 주소를 찾을 수 없습니다."),
+
     // 500: 예상하지 못한 서버 오류 (이 상태코드는 이 용도로만 쓴다)
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500_1", "서버 내부 오류가 발생했습니다."),
     ; // 항목 목록의 끝을 표시하는 세미콜론 (마지막 항목 뒤에 쉼표와 함께 둬도 된다)
