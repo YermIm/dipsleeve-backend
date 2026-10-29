@@ -3,3 +3,14 @@ spring:
     name: dipsleeve
   profiles:
     active: local
+  jpa:
+    hibernate:
+      # 서버가 켜질 때 엔티티에 맞춰 테이블을 만들거나 고친다. 데이터를 지우지는 않는다.
+      # 로컬 개발용 설정이라, 배포 환경이 생기면 프로필별로 분리하고 none이나 validate로 바꾼다
+      ddl-auto: update
+    # 실행되는 SQL을 서버 로그에 출력한다 (개발 중 확인용)
+    show-sql: true
+    properties:
+      hibernate:
+        # 출력되는 SQL을 보기 좋게 줄바꿈한다
+        format_sql: true
