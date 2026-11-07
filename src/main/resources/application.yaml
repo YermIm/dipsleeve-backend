@@ -14,3 +14,7 @@ spring:
       hibernate:
         # 출력되는 SQL을 보기 좋게 줄바꿈한다
         format_sql: true
+
+jwt:
+  # Access 토큰 유효 시간
+  access-token-expiration: 1h
