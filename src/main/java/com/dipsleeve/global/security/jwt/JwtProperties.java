@@ -1,5 +1,6 @@
 package com.dipsleeve.global.security.jwt;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,4 +14,13 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "jwt")
 public record JwtProperties(
-        @NotBlank @Size(min = 32) String secret, @NotNull Duration accessTokenExpiration) {}
+        @NotBlank @Size(min = 32) String secret, @NotNull Duration accessTokenExpiration) {
+
+    // 만료 시간이 0이거나 음수면 발급되자마자 만료되어 토큰을 쓸 수 없으므로, 서버 시작 단계에서 막는다.
+    // 값이 없는 경우는 위의 @NotNull이 처리하므로 여기서는 통과시킨다
+    @AssertTrue(message = "jwt.access-token-expiration은 0보다 커야 합니다")
+    public boolean isAccessTokenExpirationPositive() {
+        return accessTokenExpiration == null
+                || (!accessTokenExpiration.isNegative() && !accessTokenExpiration.isZero());
+    }
+}
