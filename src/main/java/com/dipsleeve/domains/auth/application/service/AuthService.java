@@ -1,11 +1,15 @@
 package com.dipsleeve.domains.auth.application.service;
 
+import com.dipsleeve.domains.auth.application.dto.request.LoginRequest;
 import com.dipsleeve.domains.auth.application.dto.request.SignupRequest;
+import com.dipsleeve.domains.auth.application.dto.response.LoginResponse;
 import com.dipsleeve.domains.auth.application.dto.response.SignupResponse;
 import com.dipsleeve.domains.auth.domain.entity.User;
+import com.dipsleeve.domains.auth.exception.AuthErrorCode;
 import com.dipsleeve.domains.auth.exception.UserErrorCode;
 import com.dipsleeve.domains.auth.repository.UserRepository;
 import com.dipsleeve.global.exception.BusinessException;
+import com.dipsleeve.global.security.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +26,7 @@ public class AuthService {
     // DB와 주고받는 통로, 비밀번호 해시 도구. 스프링이 만들어 둔 빈이 들어온다
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
 
     // 이 메서드에는 일부러 @Transactional을 붙이지 않는다.
     // DB에 쓰는 일이 save 한 번뿐이라 묶어서 롤백할 변경이 없고, save는 리포지토리가 알아서 트랜잭션으로 처리한다.
@@ -59,5 +64,25 @@ public class AuthService {
             // 이메일도 닉네임도 아닌 다른 이유의 제약 위반은 예상 못 한 오류이므로 그대로 던져 500으로 처리한다
             throw e;
         }
+    }
+
+    // 로그인: 이메일과 비밀번호가 맞으면 Access 토큰을 발급한다.
+    // DB에 쓰는 일이 없고 조회만 하므로 @Transactional을 붙이지 않는다
+    public LoginResponse login(LoginRequest request) {
+        // 1. 이메일로 사용자를 찾는다. (없으면 실패)
+        User user = userRepository
+                .findByEmail(request.email())
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+
+        // 2. 비밀번호를 비교한다. 해시는 되돌릴 수 없어서, 입력한 원본을 같은 방식으로 해시해 저장된 값과 맞는지 확인한다(matches).
+        //    저장된 비밀번호가 없는 사용자(나중에 소셜 로그인으로 가입한 경우)는 비밀번호로 로그인할 수 없으므로 같은 실패로 처리한다
+        if (user.getPassword() == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
+            // 이메일이 없을 때와 같은 에러를 던진다 (둘을 구분해서 알려 주지 않기 위함)
+            throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 3. 토큰을 발급해서 응답 객체에 담는다. 유효 시간도 JwtProvider에서 가져와 토큰의 실제 만료와 맞춘다
+        String accessToken = jwtProvider.createAccessToken(user.getId());
+        return LoginResponse.of(accessToken, jwtProvider.getAccessTokenExpirationSeconds());
     }
 }
