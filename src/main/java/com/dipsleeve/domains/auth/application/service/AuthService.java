@@ -23,7 +23,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
-    // DB와 주고받는 통로, 비밀번호 해시 도구. 스프링이 만들어 둔 빈이 들어온다
+    // 존재하지 않는 이메일로 로그인할 때 비교하는 척하기 위한 가짜 해시(BCrypt, 비용 10). 실제 사용자의 비밀번호가 아니다.
+    // PasswordEncoder의 비용 설정을 바꾸면 이 값도 같은 비용으로 다시 만들어야 응답 시간이 맞는다
+    private static final String DUMMY_PASSWORD_HASH = "$2a$10$CqmuVVs.USnr5IDZegrzm.FnCGqWtYkMwXxrCbDlF8jgt6xgGUE/m";
+
+    // DB와 주고받는 통로, 비밀번호 해시 도구, 토큰 발급 도구. 스프링이 만들어 둔 빈이 들어온다
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -69,19 +73,24 @@ public class AuthService {
     // 로그인: 이메일과 비밀번호가 맞으면 Access 토큰을 발급한다.
     // DB에 쓰는 일이 없고 조회만 하므로 @Transactional을 붙이지 않는다
     public LoginResponse login(LoginRequest request) {
-        // 1. 이메일로 사용자를 찾는다. (없으면 실패)
-        User user = userRepository
-                .findByEmail(request.email())
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+        // 1. 이메일로 사용자를 찾는다. 없으면 null
+        User user = userRepository.findByEmail(request.email()).orElse(null);
 
-        // 2. 비밀번호를 비교한다. 해시는 되돌릴 수 없어서, 입력한 원본을 같은 방식으로 해시해 저장된 값과 맞는지 확인한다(matches).
-        //    저장된 비밀번호가 없는 사용자(나중에 소셜 로그인으로 가입한 경우)는 비밀번호로 로그인할 수 없으므로 같은 실패로 처리한다
-        if (user.getPassword() == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
-            // 이메일이 없을 때와 같은 에러를 던진다 (둘을 구분해서 알려 주지 않기 위함)
+        // 2. 비교할 해시를 정한다. 사용자가 없거나 저장된 비밀번호가 없으면(나중에 소셜 로그인으로 가입한 경우) 가짜 해시로 대신한다.
+        //    그래야 어떤 경우에도 matches가 한 번씩 실행되어 응답 시간이 비슷해진다
+        //    (사용자가 없을 때만 비교를 건너뛰면 응답이 눈에 띄게 빨라져서, 상태코드가 같아도 응답 시간으로 가입 여부를 알아낼 수 있다)
+        boolean hasPassword = user != null && user.getPassword() != null;
+        String storedHash = hasPassword ? user.getPassword() : DUMMY_PASSWORD_HASH;
+
+        // 3. 비밀번호를 비교한다. 해시는 되돌릴 수 없어서, 입력한 원본을 같은 방식으로 해시해 저장된 값과 맞는지 확인한다(matches)
+        boolean passwordMatches = passwordEncoder.matches(request.password(), storedHash);
+
+        // 4. 사용자가 없을 때와 비밀번호가 틀릴 때 같은 에러를 던진다 (둘을 구분해서 알려 주지 않기 위해)
+        if (!hasPassword || !passwordMatches) {
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 3. 토큰을 발급해서 응답 객체에 담는다. 유효 시간도 JwtProvider에서 가져와 토큰의 실제 만료와 맞춘다
+        // 5. 토큰을 발급해서 응답 객체에 담는다. 유효 시간도 JwtProvider에서 가져와 토큰의 실제 만료와 맞춘다
         String accessToken = jwtProvider.createAccessToken(user.getId());
         return LoginResponse.of(accessToken, jwtProvider.getAccessTokenExpirationSeconds());
     }
