@@ -37,6 +37,11 @@ public class JwtProvider {
                 .compact();
     }
 
+    // Access 토큰의 유효 시간을 초 단위로 돌려준다. 로그인 응답(expiresIn)으로 클라이언트에게 알려 줄 때 사용
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpiration.toSeconds();
+    }
+
     // 토큰이 유효한지 확인한다: 서명이 맞고, 만료되지 않았고, 형식이 올바르면 true
     public boolean validateToken(String token) {
         try {
